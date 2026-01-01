@@ -129,12 +129,24 @@ public class GuiGunBox extends GuiContainer
 		else
 			fontRendererObj.drawStringWithShadow("<", (7 + 10) - (fontRendererObj.getStringWidth("<") / 2), 26, hexColor(type.buttonTextColor));
 
+	}
+
+	@Override
+	public void drawScreen(int mouseX, int mouseY, float partialTicks)
+	{
+		super.drawScreen(mouseX, mouseY, partialTicks);
+
 		//Draw tooltips
 		if(recipeTooltip != null)
-			drawHoveringText(Collections.singletonList(recipeTooltip), mouseX - guiLeft, mouseY - guiTop, fontRendererObj);
+		{
+			drawHoveringText(Collections.singletonList(recipeTooltip), mouseX, mouseY, fontRendererObj);
+		}
+
 		//Draw Stats
 		if(gunStats != null)
-			drawHoveringText(gunStats, mouseX - guiLeft, mouseY - guiTop, fontRendererObj);
+		{
+			drawHoveringText(gunStats, mouseX, mouseY, fontRendererObj);
+		}
 	}
 
 	@Override
