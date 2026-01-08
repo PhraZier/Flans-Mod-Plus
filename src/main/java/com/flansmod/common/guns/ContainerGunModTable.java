@@ -80,8 +80,8 @@ public class ContainerGunModTable extends Container
             
             if(slotID >= 17)
             {
-				Slot gunSlotObj = (Slot) inventorySlots.get(0);
-				if (gunSlotObj.getStack() == null && slotStack.getItem() instanceof ItemGun)
+				Slot gunSlot = (Slot) inventorySlots.get(0);
+				if (gunSlot.getStack() == null && slotStack.getItem() instanceof ItemGun)
                 {
 					if (!mergeItemStack(slotStack, 0, 1, false))
                     {
@@ -90,7 +90,17 @@ public class ContainerGunModTable extends Container
 				}
                 else if (slotStack.getItem() instanceof ItemAttachment)
                 {
-					int targetSlot = findCorrectModSlot(slotStack);
+                    int targetSlot = -1;
+                    for (int i = 1; i <= 16; i++)
+                    {
+                        Slot slot = (Slot) inventorySlots.get(i);
+                        if (!slot.getHasStack() && slot.isItemValid(slotStack))
+                        {
+                            targetSlot = i;
+                            break;
+                        }
+                    }
+
 					if (targetSlot != -1)
                     {
 						if (!mergeItemStack(slotStack, targetSlot, targetSlot + 1, false))
@@ -128,43 +138,6 @@ public class ContainerGunModTable extends Container
 
         return stack;
     }
-
-	private int findCorrectModSlot(ItemStack stack) {
-		if (!(stack.getItem() instanceof ItemAttachment))
-			return -1;
-
-		ItemAttachment itemAttachment = (ItemAttachment) stack.getItem();
-		AttachmentType attachmentType = itemAttachment.type;
-		EnumAttachmentType enumType = attachmentType.type;
-
-		int[] typeToSlot = {
-				1, // barrel
-				2, // sights
-				3, // stock
-				4, // grip
-				5, // gadget
-				6, // slide
-				7, // pump
-				8  // accessory
-		};
-
-		// Specific attachments go to dedicated slots
-		if (enumType.ordinal() <= 7) {
-			int slotIndex = typeToSlot[enumType.ordinal()];
-			Slot slot = (Slot) inventorySlots.get(slotIndex);
-			if (!slot.getHasStack() && slot.isItemValid(stack))
-				return slotIndex;
-		}
-
-		// Generic attachments
-		for (int i = 9; i <= 16; i++) {
-			Slot slot = (Slot) inventorySlots.get(i);
-			if (!slot.getHasStack() && slot.isItemValid(stack))
-				return i;
-		}
-
-		return -1;
-	}
 
 	public void pressButton(boolean paint, boolean left)
 	{
