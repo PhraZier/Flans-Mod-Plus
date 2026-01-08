@@ -98,12 +98,20 @@ public class GuiGunModTable extends GuiContainer {
             Float normal = roundFloat(1 - gunType.getRecoilControl(gunStack, false, false), 2);
             Float sneaking = roundFloat(1 - gunType.getRecoilControl(gunStack, false, true), 2);
             fontRendererObj.drawString(String.format("%3.2f  %3.2f  %3.2f", sprinting, normal, sneaking), 241, 110, 0x404040);
-
-            //Draw attachment tooltips
-            if (hoveringOverModSlots != null)
-                drawHoveringText(Collections.singletonList(hoveringOverModSlots), mouseX - guiLeft, mouseY - guiTop, fontRendererObj);
         }
     }
+
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        this.drawDefaultBackground();
+        super.drawScreen(mouseX, mouseY, partialTicks);
+
+        // Draw tooltips for mod slots / attachments
+        if (hoveringOverModSlots != null) {
+            drawHoveringText(Collections.singletonList(hoveringOverModSlots), mouseX, mouseY, fontRendererObj);
+        }
+    }
+
 
     @Override
     protected void drawGuiContainerBackgroundLayer(float f, int i, int j) {
@@ -218,6 +226,7 @@ public class GuiGunModTable extends GuiContainer {
 
                 GL11.glColor4f(1F, 1F, 1F, 1F);
                 GL11.glDisable(GL11.GL_LIGHTING);
+                GL11.glDisable(GL11.GL_DEPTH_TEST);
                 mc.renderEngine.bindTexture(texture);
 
                 for (int s = 0; s < numDyes; s++)
@@ -302,59 +311,54 @@ public class GuiGunModTable extends GuiContainer {
         mouseX = Mouse.getEventX() * this.width / this.mc.displayWidth;
         mouseY = this.height - Mouse.getEventY() * this.height / this.mc.displayHeight - 1;
 
+        hoveringOver = null;
+        ItemStack gunStack = inventorySlots.getSlot(0).getStack();
+
         int mouseXInGUI = mouseX - guiLeft;
         int mouseYInGUI = mouseY - guiTop;
 
-        hoveringOver = null;
-        ItemStack gunStack = inventorySlots.getSlot(0).getStack();
         if (gunStack != null && gunStack.getItem() instanceof ItemGun) {
             GunType gunType = ((ItemGun) gunStack.getItem()).type;
+            ArrayList<Paintjob> paintjobs = new ArrayList<>();
+            for (Paintjob p : gunType.paintjobs)
+                if (p.addToTables) paintjobs.add(p);
 
-            ArrayList<Paintjob> applicablePaintjobs = new ArrayList<>();
-
-            if (gunType.addAnyPaintjobToTables)
-            {
-                for (Paintjob paintjob : gunType.paintjobs)
-                {
-                    if (paintjob.addToTables)
-                    {
-                        applicablePaintjobs.add(paintjob);
+            outerLoop:
+            for (int j = 0; j < (paintjobs.size() + 1) / 2; j++) {
+                for (int i = 0; i < 2; i++) {
+                    int index = 2 * j + i;
+                    if (index >= paintjobs.size()) break;
+                    int slotX = 181 + i * 18;
+                    int slotY = 150 + j * 18;
+                    if (mouseXInGUI >= slotX && mouseXInGUI < slotX + 18
+                            && mouseYInGUI >= slotY && mouseYInGUI < slotY + 18) {
+                        hoveringOver = paintjobs.get(index);
+                        break outerLoop;
                     }
                 }
             }
 
-            int numPaintjobs = applicablePaintjobs.size();
-            int numRows = numPaintjobs / 2 + 1;
-
-            for (int j = 0; j < numRows; j++) {
-                for (int i = 0; i < 2; i++) {
-                    if (2 * j + i >= numPaintjobs)
-                        continue;
-
-                    Paintjob paintjob = applicablePaintjobs.get(2 * j + i);
-                    int slotX = 181 + i * 18;
-                    int slotY = 150 + j * 18;
-                    if (mouseXInGUI >= slotX && mouseXInGUI < slotX + 18 && mouseYInGUI >= slotY && mouseYInGUI < slotY + 18)
-                        hoveringOver = paintjob;
-                }
-            }
-
-            //Show attachment tooltips
+            // Mod slot hover detection
             hoveringOverModSlots = null;
-            String[] text = {"Barrel", "Scope", "Stock", "Grip", "Gadget", "Slide", "Pump", "Accessory"};
-            boolean[] allowBools = {gunType.allowBarrelAttachments, gunType.allowScopeAttachments, gunType.allowStockAttachments,
-                    gunType.allowGripAttachments, gunType.allowGadgetAttachments, gunType.allowSlideAttachments,
+            String[] texts = {"Barrel", "Scope", "Stock", "Grip", "Gadget", "Slide", "Pump", "Accessory"};
+            boolean[] allow = {gunType.allowBarrelAttachments, gunType.allowScopeAttachments,
+                    gunType.allowStockAttachments, gunType.allowGripAttachments,
+                    gunType.allowGadgetAttachments, gunType.allowSlideAttachments,
                     gunType.allowPumpAttachments, gunType.allowAccessoryAttachments};
 
-            for (int a = 0; a < allowBools.length; a++) {
+            for (int a = 0; a < allow.length; a++) {
                 int slotX = 16 + a * 18;
                 int slotY = 88;
-                if (mouseXInGUI >= slotX && mouseXInGUI < slotX + 18 && mouseYInGUI >= slotY && mouseYInGUI < slotY + 18
-                        && !inventorySlots.getSlot(a + 1).getHasStack() && allowBools[a])
-                    hoveringOverModSlots = text[a];
+                if (allow[a] && !inventorySlots.getSlot(a + 1).getHasStack()
+                        && mouseXInGUI >= slotX && mouseXInGUI < slotX + 18
+                        && mouseYInGUI >= slotY && mouseYInGUI < slotY + 18) {
+                    hoveringOverModSlots = texts[a];
+                    break;
+                }
             }
         }
     }
+
 
     @Override
     protected void mouseClicked(int x, int y, int button) {
