@@ -10,22 +10,22 @@ import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
 
-public class ContainerGunModTable extends Container 
+public class ContainerGunModTable extends Container
 {
 	private InventoryGunModTable inventory;
 	public InventoryPlayer playerInv;
 	public World world;
-	
+
 	public ContainerGunModTable(InventoryPlayer i, World w)
 	{
 		playerInv = i;
 		inventory = new InventoryGunModTable();
 		world = w;
-		
+
 		//Gun slot
 		SlotGun gunSlot = new SlotGun(inventory, 0, 184, 37, null);
 		addSlotToContainer(gunSlot);
-		
+
 		//Attachment Slots
 		for(int k = 0; k < 8; k++)
 		{
@@ -80,24 +80,43 @@ public class ContainerGunModTable extends Container
             
             if(slotID >= 17)
             {
-            	return null;
-            }
-            else 
-            {
-            	if(!mergeItemStack(slotStack, 17, inventorySlots.size(), true))
-            	{
-            		return null;
-            	}
-            }
-            
-            if (slotStack.stackSize == 0)
-            {
-                currentSlot.putStack(null);
+				Slot gunSlotObj = (Slot) inventorySlots.get(0);
+				if (gunSlotObj.getStack() == null && slotStack.getItem() instanceof ItemGun)
+                {
+					if (!mergeItemStack(slotStack, 0, 1, false))
+                    {
+						return null;
+					}
+				}
+                else if (slotStack.getItem() instanceof ItemAttachment)
+                {
+					int targetSlot = findCorrectModSlot(slotStack);
+					if (targetSlot != -1)
+                    {
+						if (!mergeItemStack(slotStack, targetSlot, targetSlot + 1, false))
+							return null;
+					}
+				}
             }
             else
             {
-                currentSlot.onSlotChanged();
-            }
+                if (!mergeItemStack(slotStack, 44, 53, false))
+                {
+					if (!mergeItemStack(slotStack, 17, 44, false))
+                    {
+						return null;
+					}
+				}
+			}
+
+			if (slotStack.stackSize == 0)
+            {
+				currentSlot.putStack(null);
+			}
+            else
+            {
+				currentSlot.onSlotChanged();
+			}
 
             if (slotStack.stackSize == stack.stackSize)
             {
@@ -109,6 +128,43 @@ public class ContainerGunModTable extends Container
 
         return stack;
     }
+
+	private int findCorrectModSlot(ItemStack stack) {
+		if (!(stack.getItem() instanceof ItemAttachment))
+			return -1;
+
+		ItemAttachment itemAttachment = (ItemAttachment) stack.getItem();
+		AttachmentType attachmentType = itemAttachment.type;
+		EnumAttachmentType enumType = attachmentType.type;
+
+		int[] typeToSlot = {
+				1, // barrel
+				2, // sights
+				3, // stock
+				4, // grip
+				5, // gadget
+				6, // slide
+				7, // pump
+				8  // accessory
+		};
+
+		// Specific attachments go to dedicated slots
+		if (enumType.ordinal() <= 7) {
+			int slotIndex = typeToSlot[enumType.ordinal()];
+			Slot slot = (Slot) inventorySlots.get(slotIndex);
+			if (!slot.getHasStack() && slot.isItemValid(stack))
+				return slotIndex;
+		}
+
+		// Generic attachments
+		for (int i = 9; i <= 16; i++) {
+			Slot slot = (Slot) inventorySlots.get(i);
+			if (!slot.getHasStack() && slot.isItemValid(stack))
+				return i;
+		}
+
+		return -1;
+	}
 
 	public void pressButton(boolean paint, boolean left)
 	{
