@@ -6,6 +6,7 @@ import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.ContainerGunModTable;
 import com.flansmod.common.guns.GunType;
 import com.flansmod.common.guns.ItemGun;
+import com.flansmod.common.guns.SlotGun;
 import com.flansmod.common.network.PacketGunPaint;
 import com.flansmod.common.paintjob.Paintjob;
 import net.minecraft.client.gui.inventory.GuiContainer;
@@ -13,6 +14,7 @@ import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Items;
+import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
@@ -30,6 +32,7 @@ public class GuiGunModTable extends GuiContainer {
     private int mouseX, mouseY;
     private InventoryPlayer inventory;
     private boolean flipGunModel = false;
+    private int highlightedAttachmentSlot = -1;
 
     //Smoothing
     private int[] lastStats = {0, 0, 0, 0};
@@ -203,6 +206,9 @@ public class GuiGunModTable extends GuiContainer {
                     //itemRender.renderItemIntoGUI(this.fontRendererObj, mc.getTextureManager(), stack, xOrigin + 182 + (x * 18), yOrigin + 151 + (y * 18));
                 }
             }
+            if (highlightedAttachmentSlot != -1) {
+                drawHighlightedSlots();
+            }
         }
 
         //Draw hover box for paintjob
@@ -236,6 +242,30 @@ public class GuiGunModTable extends GuiContainer {
                     itemRender.renderItemIntoGUI(this.fontRendererObj, mc.getTextureManager(), hoveringOver.dyesNeeded[s], xOrigin + 224 + s * 18, yOrigin + 151);
                     itemRender.renderItemOverlayIntoGUI(this.fontRendererObj, mc.getTextureManager(), hoveringOver.dyesNeeded[s], xOrigin + 224 + s * 18, yOrigin + 151);
                 }
+            }
+        }
+    }
+
+    private void drawHighlightedSlots() {
+        if (highlightedAttachmentSlot == -1) return;
+
+        SlotGun targetSlot = (SlotGun) inventorySlots.getSlot(highlightedAttachmentSlot);
+
+        // Draw the clicked attachment slot
+        int sx = guiLeft + targetSlot.xDisplayPosition;
+        int sy = guiTop + targetSlot.yDisplayPosition;
+        drawRect(sx, sy, sx + 16, sy + 16, 0xFF0000FF);
+
+        // Highlight all valid inventory slots
+        for (int slotIndex = 17; slotIndex <= 52; slotIndex++) {
+            Slot slot = inventorySlots.getSlot(slotIndex);
+            if (!slot.getHasStack()) continue;  // skip empty slots
+
+            ItemStack stack = slot.getStack();
+            if (targetSlot.isItemValid(stack)) {
+                int ix = guiLeft + slot.xDisplayPosition;
+                int iy = guiTop + slot.yDisplayPosition;
+                drawRect(ix, iy, ix + 16, iy + 16, 0x6000FF00);
             }
         }
     }
@@ -376,11 +406,48 @@ public class GuiGunModTable extends GuiContainer {
 
         if (button != 0)
             return;
+
+        Slot slot = getSlotUnderMouse(x, y);
+        if (slot instanceof SlotGun && !slot.getHasStack() && this.mc.thePlayer.inventory.getItemStack() == null) {
+            highlightedAttachmentSlot = highlightedAttachmentSlot == slot.slotNumber ? -1 : slot.slotNumber;
+        }
+        else
+        {
+            highlightedAttachmentSlot = -1;
+        }
+
         if (hoveringOver == null)
             return;
 
         FlansMod.getPacketHandler().sendToServer(new PacketGunPaint(hoveringOver.ID));
         ((ContainerGunModTable) inventorySlots).clickPaintjob(hoveringOver);
+    }
+
+    @Override
+    public void updateScreen() {
+        super.updateScreen();
+
+        if (highlightedAttachmentSlot != -1) {
+            Slot slot = inventorySlots.getSlot(highlightedAttachmentSlot);
+            if (slot.getHasStack()) {
+                highlightedAttachmentSlot = -1;
+            }
+        }
+    }
+
+    private Slot getSlotUnderMouse(int mouseX, int mouseY) {
+        for (Object obj : inventorySlots.inventorySlots) {
+            Slot slot = (Slot) obj;
+
+            int x = guiLeft + slot.xDisplayPosition;
+            int y = guiTop + slot.yDisplayPosition;
+
+            if (mouseX >= x && mouseX < x + 16 &&
+                    mouseY >= y && mouseY < y + 16) {
+                return slot;
+            }
+        }
+        return null;
     }
 
     //Round values to n number of decimal points
