@@ -109,7 +109,7 @@ public class GuiDriveableCrafting extends GuiScreen {
     }
 
     @Override
-    public void drawScreen(int i, int j, float f) {
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         String recipeName;
         ScaledResolution scaledresolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int w = scaledresolution.getScaledWidth();
@@ -301,13 +301,33 @@ public class GuiDriveableCrafting extends GuiScreen {
         }
         //If we can craft it, draw the button for crafting
         else {
-            super.drawScreen(i, j, f);
+            super.drawScreen(mouseX, mouseY, partialTicks);
         }
-        int mouseX = Mouse.getEventX() * this.width / this.mc.displayWidth;
-        int mouseY = this.height - Mouse.getEventY() * this.height / this.mc.displayHeight - 1;
+
+        updateRecipeTooltip(mouseX, mouseY);
         if (recipeTooltip != null) {
             drawHoveringText(Collections.singletonList(recipeTooltip), mouseX, mouseY, fontRendererObj);
         }
+    }
+
+    private void updateRecipeTooltip(int mouseX, int mouseY) {
+        int recipeX = mouseX - guiOriginX - 8;
+        int recipeY = mouseY - guiOriginY - 138;
+
+        if (recipeX >= 0 && recipeY >= 0 && recipeX < 4 * 18 && recipeY < 3 * 18) {
+            int idX = recipeX / 18;
+            int idY = recipeY / 18;
+
+            if (recipeX % 18 < 16 && recipeY % 18 < 16) {
+                int id = recipeScroll * 4 + idY * 4 + idX;
+                if (selectedType != null && id >= 0 && id < selectedType.driveableRecipe.size()) {
+                    ItemStack recipeStack = selectedType.driveableRecipe.get(id);
+                    recipeTooltip = recipeStack.getDisplayName();
+                    return;
+                }
+            }
+        }
+        recipeTooltip = null;
     }
 
     /**
